@@ -11,3 +11,7 @@ RoxygenNote: 7.3.3
 Imports: dplyr, tidyr
 URL: https://github.com/JosephForest99/SCRAbies
 BugReports: https://github.com/JosephForest99/SCRAbies/issues
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
