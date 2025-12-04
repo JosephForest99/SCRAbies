@@ -1,11 +1,13 @@
 Package: SCRAbies
-Title: What the Package Does (One Line, Title Case)
+Title: Simulador de crecimiento
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person("Abel", "Hernández", , "first.last@example.com", role = c("aut", "cre"))
+Description: Simula un sistema de crecimiento y rendimiento de rodal.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
+Imports: dplyr, tidyr
+URL: https://github.com/JosephForest99/SCRAbies
+BugReports: https://github.com/JosephForest99/SCRAbies/issues
