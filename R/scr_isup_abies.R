@@ -1,4 +1,4 @@
-#' @title Sistema de crecimiento con la FRA de Bailey y Ware (1983)
+#' @title Sistema de crecimiento con el Índice de Supresión de Pienaar (1979)
 #' @description
 #' Simulador de crecimiento de atributos de rodal como altura dominante, mortalidad y área basal
 #' sin o con efecto de aclareo.
@@ -12,23 +12,21 @@
 #'
 #' @return Regresa un objeto tibble.
 #' @examples
-#' # scr_fra_bailey_ware_abies(E = 1:5, Narb = 2000, IS = 28)
-#'
+#' # scr_isup_abies(E = 1:5, Narb = 2000, IS = 28)
 #'
 #' @import dplyr
 #' @import tidyr
-
+#'
 #' @export
 
-# Función para simular un SCR con aclareo
-scr_fra_bailey_ware_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL, ABpts = NULL){
+scr_isup_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL, ABpts = NULL){
 
   # Función negativa
   `%nin%` = Negate(`%in%`)
 
   if (isTRUE(Thinning)) {
     if (length(Ets) != length(ABpts)) {
-      stop("Los vectores `Ets` y `ABpts` debe tener la misma longitud")
+      stop("Los vectores `Ets` y `ABpts` deben tener la misma longitud")
     } else{
       # Si es TRUE es necesario los valores de Et
       E = E |> c(Ets) |> sort()
@@ -123,8 +121,9 @@ scr_fra_bailey_ware_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL,
   Nt_bandera = 0; Nb_bandera = 0; ABpt_bandera = 0;
 
   # Bucle para estimar mortaliad
-  N2 = NA
+  N2 = NA; Nu2 = NA
   N2[1] = Narb
+  Nu2[1] = Narb
   for (i in 2:length(E)) {
     # Condición para restar el número de árboles en el año de aclareo
     if (E[i] == E[i-1]) {
@@ -139,9 +138,12 @@ scr_fra_bailey_ware_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL,
       Nt[i] = N2[i-1] * ABpt[i]**(1/1.649317)
       Nb[i] = N2[i-1]
 
+      # Estimación de N de una parcela sin aclareo
+      Nu2[i] = N_fn(N1 = Nu2[i-1], E1 = E[i-1], E2 = E[i])
       # Disminución de árboles de acuerdo a la proporción de AB asignado
       N2[i] = N2[i-1] - N2[i-1] * ABpt[i]**(1/1.649317)
     }else{
+      Nu2[i] = N_fn(N1 = Nu2[i-1], E1 = E[i-1], E2 = E[i])
       N2[i] = N_fn(N1 = N2[i-1], E1 = E[i-1], E2 = E[i])
 
       # Banderas (para guardar el último valor)
@@ -151,39 +153,45 @@ scr_fra_bailey_ware_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL,
     }
   }
 
-  # **ÁREA BASAL**
+  # # **ÁREA BASAL**
 
   # Predicción
-  AB1_fn <- function(E1, N1, AD1, Xt, Et, idthin){
+  AB1_fn <- function(E1, N1, AD1){
     # Parámetros del modelo
-    B0 = -6.3708686; B1 = 1.1695811; B2 = 0.7713131; B3 = 0.4866774; B4 = -49.9570687;
+    B0 = -5.9580735; B1 = 1.3068509; B2 = 0.6145979; B3 = 0.4594637
     # Modelo de predicción
-    AB1 = exp(B0)*AD1**B1*E1**B2*N1**B3*
-      exp(ifelse(idthin == 0 , 0, B4*Xt/(E1**2*Et)))
+    AB1 = exp(B0)*AD1**B1*E1**B2*N1**B3
 
     return(AB1)
   }
   # Proyección
-  AB2_fn <- function(AB1, E1, E2, N1, N2, AD1, AD2, Xt, Et, idthin){
+  AB2_fn <- function(AB1, E1, E2, N1, N2, AD1, AD2){
     # Parámetros del modelo
-    B0 = -6.3708686; B1 = 1.1695811; B2 = 0.7713131; B3 = 0.4866774; B4 = -49.9570687;
+    B0 = -5.9580735; B1 = 1.3068509; B2 = 0.6145979; B3 = 0.4594637
+    # Parámetros del modelo (EDAD > 90 AÑOS)
+    A1 = 0.941209
     # Modelo de proyección
-    AB2 = AB1*(AD2/AD1)**B1*(E2/E1)**B2*(N2/N1)**B3*
-      exp(ifelse(idthin == 0, 0, B4*Xt*(1/(E2**2*Et)-1/(E1**2*Et)) ))
+    # Edad < 90 años
+    if (E2<90) {
+      AB2 = AB1*(AD2/AD1)**B1*(E2/E1)**B2*(N2/N1)**B3
+      # Edad > 90 años
+    } else{
+      AB2 = AB1*(AD2/AD1)^A1
+    }
 
     return(AB2)
   }
 
-  # Proyección E>90 AÑOS
-  AB2_fn90 <- function(AB1, E1, E2, AD1, AD2, Xt, Et, idthin){
+  # Índice de supresión
+  ISup_fn <- function(ISup1, E1, E2){
     # Parámetros del modelo
-    B1 = 9.066359e-01; B4 = -4.106880e+04;
-    # Modelo de proyección
-    AB2 = AB1*(AD2/AD1)^B1
-    exp(ifelse(idthin == 0, 0, B4*Xt*(1/(E2**2*Et)-1/(E1**2*Et)) ))
+    B1 = -1.482653
+    ISup2 = ISup1 * exp(B1/E2 * (E2 - E1))
 
-    return(AB2)
+    return(ISup2)
   }
+
+
 
   # Algunas variables para realizar el bucle del modelo de AB
   ABt = vector(mode = "numeric", length = length(E));
@@ -197,26 +205,21 @@ scr_fra_bailey_ware_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL,
   Xt = vector(mode = "numeric", length = length(E));
   DCMt_bandera = 0; DCMb_bandera = 0
 
-  AB2 = NA
-  AB2[1] = AB1_fn(E1 = E[1], N1 = N2[1], AD1 = AD2[1], Xt = Xt[1],
-                  Et = Et[1], idthin = idthin[1])
+  ISup = vector(mode = "numeric", length = length(E));
+
+  AB2 = NA; ABu2 = NA
+  AB2[1] = AB1_fn(E1 = E[1], N1 = N2[1], AD1 = AD2[1])
+  ABu2[1] = AB1_fn(E1 = E[1], N1 = N2[1], AD1 = AD2[1])
   DCM[1] = sqrt(40000/pi * AB2[1]/N2[1])
 
   for (i in 2:length(E)) {
 
     # Aplicación del modelo SIN ACLAREO
     if (Et[i] == 0) {
-
-      if (E[i]<90) {
-        AB2[i] = AB2_fn(AB1 = AB2[i-1], E1 = E[i-1], E2 = E[i],
-                        N1 = N2[i-1], N2 = N2[i], AD1 = AD2[i-1], AD2 = AD2[i],
-                        Xt = Xt[i], Et = Et[i], idthin = idthin[i])
-      } else{
-        AB2[i] = AB2_fn90(AB1 = AB2[i-1],
-                          E1 = E[i-1], E2 = E[i],
-                          AD1 = AD2[i-1], AD2 = AD2[i],
-                          Xt = Xt[i], Et = Et[i], idthin = idthin[i])
-      }
+      ABu2[i] = AB2_fn(AB1 = ABu2[i-1], E1 = E[i-1], E2 = E[i],
+                       N1 = Nu2[i-1], N2 = Nu2[i], AD1 = AD2[i-1], AD2 = AD2[i])
+      AB2[i] = AB2_fn(AB1 = AB2[i-1], E1 = E[i-1], E2 = E[i],
+                      N1 = N2[i-1], N2 = N2[i], AD1 = AD2[i-1], AD2 = AD2[i])
 
       DCM[i] = sqrt(40000/pi * AB2[i]/N2[i])
 
@@ -228,13 +231,15 @@ scr_fra_bailey_ware_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL,
       ABb_bandera = AB2[i-1]
       ABb[i] = AB2[i-1]
 
+      # Estimación de ABu (sin aclareo)
+      ABu2[i] = AB2_fn(AB1 = ABu2[i-1], E1 = E[i-1], E2 = E[i],
+                       N1 = Nu2[i-1], N2 = Nu2[i], AD1 = AD2[i-1], AD2 = AD2[i])
+
       # ESTIMACIÓN DE AB COMO DIFERENCIA (ABb-ABt)
       AB2[i] = AB2[i-1] - ABt[i]
 
-      # ESTIMACIÓN DE AB DIRECTAMENTE CON EL MODELO
-      # AB2[i] = AB2_fn(AB1 = AB2[i-1], E1 = E[i-1], E2 = E[i],
-      #                 N1 = N2[i-1], N2 = N2[i], AD1 = AD2[i-1], AD2 = AD2[i],
-      #                 Xt = Xt[i], Et = Et[i], idthin = idthin[i])
+      # Estimación del Índice de supresión
+      ISup[i] = (ABu2[i] - AB2[i])/ABu2[i]
 
       DCM[i] = sqrt(40000/pi * AB2[i]/N2[i])
 
@@ -256,26 +261,24 @@ scr_fra_bailey_ware_abies <- function(E, Narb, IS, Thinning = FALSE, Ets = NULL,
       DCMb[i] = DCMb_bandera
       Xt[i] = Xt_bandera
 
-      if (E[i]<90) {
-        AB2[i] = AB2_fn(AB1 = AB2[i-1], E1 = E[i-1], E2 = E[i],
-                        N1 = N2[i-1], N2 = N2[i], AD1 = AD2[i-1], AD2 = AD2[i],
-                        Xt = Xt[i], Et = Et[i], idthin = idthin[i])
-      } else{
-        AB2[i] = AB2_fn90(AB1 = AB2[i-1],
-                          E1 = E[i-1], E2 = E[i],
-                          AD1 = AD2[i-1], AD2 = AD2[i],
-                          Xt = Xt[i], Et = Et[i], idthin = idthin[i])
-      }
+      # Estimación de ABu (sin aclareo)
+      ABu2[i] = AB2_fn(AB1 = ABu2[i-1], E1 = E[i-1], E2 = E[i],
+                       N1 = Nu2[i-1], N2 = Nu2[i], AD1 = AD2[i-1], AD2 = AD2[i])
+
+      # Estimación del índice de supresión
+      ISup[i] = ISup_fn(ISup[i-1], E[i-1], E[i])
+
+      # Estimación de AB2 (con aclareo)
+      AB2[i] = ABu2[i] * (1-ISup[i])
 
       DCM[i] = sqrt(40000/pi * AB2[i]/N2[i])
 
     }
   }
 
-  df <- tibble(Thin = Thin, Densidad = Narb, E = E, IS = IS, AD = AD2,
-               N = N2, AB = AB2, DCM = DCM
+  df <- tibble(Thin = Thin, E = E, Densidad = Narb, IS = IS, AD = AD2,
+               N = N2, ISup = ISup, AB = AB2, DCM = DCM
   )
-
   return(df)
 
 }

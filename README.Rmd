@@ -1,0 +1,37 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# SCRAbies
+
+Este es un paquete sencillo con funciones para generar una simulación de crecimiento a nivel de rodal.
+
+
+## Instalación
+
+Puedes instalar el paquete con la siguiente instrucción: `devtools::installl_github("JosephForest99/SCRAbies")`
+
+```{r}
+# devtools::installl_github("JosephForest99/SCRAbies")
+```
+
+## Example
+
+Este es un ejemplo para simular un sistema de crecimiento y rendimiento con la FRA de Bailey & Ware (1983).
+
+```{r example}
+library(SCRAbies)
+scr_fra_bailey_ware_abies(E = 1:5, Narb = 2000, IS = 28)
+scr_isup_abies(E = 1:5, Narb = 2000, IS = 28)
+```
