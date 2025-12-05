@@ -9,11 +9,7 @@ crecimiento a nivel de rodal.
 ## Instalación
 
 Puedes instalar el paquete con la siguiente instrucción:
-`devtools::installl_github("JosephForest99/SCRAbies")`
-
-``` r
-# devtools::install_github("JosephForest99/SCRAbies")
-```
+`devtools::install_github("JosephForest99/SCRAbies")`
 
 ## Ejemplo
 

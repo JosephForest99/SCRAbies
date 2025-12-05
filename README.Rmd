@@ -20,11 +20,7 @@ Este es un paquete sencillo con funciones para generar una simulación de crecim
 
 ## Instalación
 
-Puedes instalar el paquete con la siguiente instrucción: `devtools::installl_github("JosephForest99/SCRAbies")`
-
-```{r}
-# devtools::install_github("JosephForest99/SCRAbies")
-```
+Puedes instalar el paquete con la siguiente instrucción: `devtools::install_github("JosephForest99/SCRAbies")`
 
 ## Ejemplo
 
